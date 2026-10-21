@@ -1,0 +1,64 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+' ===== Актори =====
+actor "Гість" as Guest
+actor "Водій" as Driver
+actor "Адміністратор" as Admin
+
+' Узагальнення акторів: Водій може все, що й Гість
+Guest <|-- Driver
+
+' ===== Межі системи =====
+rectangle "RouteWise" {
+  usecase "Знайти місце" as UC_Find
+  usecase "Знайти за назвою" as UC_FindName
+  usecase "Знайти за категорією" as UC_FindCat
+  usecase "Переглянути дорожні події" as UC_Events
+  usecase "Зареєструватися" as UC_Register
+
+  usecase "Побудувати маршрут" as UC_Route
+  usecase "Додати проміжну точку" as UC_Stop
+  usecase "Повідомити про дорожню подію" as UC_Report
+  usecase "Переглянути історію поїздок" as UC_History
+  usecase "Експортувати історію в CSV" as UC_Export
+
+  usecase "Керувати базою місць" as UC_Places
+  usecase "Модерувати повідомлення" as UC_Moderate
+  usecase "Переглянути статистику" as UC_Stats
+
+  usecase "Авторизуватися" as UC_Login
+}
+
+' ===== Асоціації: хто що робить =====
+Guest --> UC_Find
+Guest --> UC_Events
+Guest --> UC_Register
+
+Driver --> UC_Route
+Driver --> UC_Report
+Driver --> UC_History
+
+Admin --> UC_Places
+Admin --> UC_Moderate
+Admin --> UC_Stats
+
+' ===== Узагальнення варіантів використання =====
+UC_Find <|-- UC_FindName
+UC_Find <|-- UC_FindCat
+
+' ===== include: завжди виконується як частина =====
+UC_Route ..> UC_Find : <<include>>
+UC_Route ..> UC_Login : <<include>>
+UC_Report ..> UC_Login : <<include>>
+UC_History ..> UC_Login : <<include>>
+UC_Places ..> UC_Login : <<include>>
+UC_Moderate ..> UC_Login : <<include>>
+UC_Stats ..> UC_Login : <<include>>
+
+' ===== extend: виконується лише за певної умови =====
+UC_Stop ..> UC_Route : <<extend>>
+UC_Export ..> UC_History : <<extend>>
+@enduml
