@@ -1,0 +1,248 @@
+@startuml
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+hide empty members
+
+' ===================== MODELS =====================
+package "Models" {
+  class User {
+    +id: int
+    +name: string
+    +email: string
+    +password: string
+    +role: string
+    +created_at: DateTime
+    --
+    +trips(): HasMany
+    +routes(): HasMany
+    +favoritePlaces(): HasMany
+    +trafficReports(): HasMany
+    +isAdmin(): bool
+    +getTotalDistance(period: string): float
+  }
+
+  class Category {
+    +id: int
+    +name: string
+    +slug: string
+    +icon: string
+    +color: string
+    +is_active: bool
+    --
+    +places(): HasMany
+    +getPlacesCount(): int
+    +activate(): void
+    +deactivate(): void
+    +{static} findBySlug(slug: string): Category
+  }
+
+  class Place {
+    +id: int
+    +category_id: int
+    +name: string
+    +address: string
+    +latitude: float
+    +longitude: float
+    +description: string
+    +is_verified: bool
+    --
+    +category(): BelongsTo
+    +favoritedBy(): HasMany
+    +distanceTo(lat: float, lng: float): float
+    +verify(): void
+    +{static} searchByName(query: string): Collection
+    +{static} findNearby(lat: float, lng: float, radiusKm: float): Collection
+  }
+
+  class FavoritePlace {
+    +id: int
+    +user_id: int
+    +place_id: int
+    +label: string
+    +icon: string
+    +sort_order: int
+    --
+    +user(): BelongsTo
+    +place(): BelongsTo
+    +rename(label: string): void
+    +moveTo(position: int): void
+    +isHome(): bool
+  }
+
+  class Route {
+    +id: int
+    +user_id: int
+    +mode: string
+    +distance_km: float
+    +duration_min: int
+    +geometry: string
+    +cache_key: string
+    +created_at: DateTime
+    --
+    +user(): BelongsTo
+    +waypoints(): HasMany
+    +trips(): HasMany
+    +getStart(): Waypoint
+    +getDestination(): Waypoint
+    +addWaypoint(lat: float, lng: float, position: int): Waypoint
+    +estimateArrival(): DateTime
+  }
+
+  class Waypoint {
+    +id: int
+    +route_id: int
+    +place_id: int
+    +latitude: float
+    +longitude: float
+    +position: int
+    +address: string
+    --
+    +route(): BelongsTo
+    +place(): BelongsTo
+    +isStart(): bool
+    +isDestination(): bool
+    +toCoordinates(): array
+  }
+
+  class Trip {
+    +id: int
+    +user_id: int
+    +route_id: int
+    +started_at: DateTime
+    +finished_at: DateTime
+    +actual_distance_km: float
+    +status: string
+    --
+    +user(): BelongsTo
+    +route(): BelongsTo
+    +start(): void
+    +finish(): void
+    +getDurationMin(): int
+    +isActive(): bool
+  }
+
+  class TrafficReport {
+    +id: int
+    +user_id: int
+    +type: string
+    +latitude: float
+    +longitude: float
+    +comment: string
+    +status: string
+    +confirmations: int
+    +expires_at: DateTime
+    --
+    +user(): BelongsTo
+    +approve(): void
+    +reject(): void
+    +confirm(): void
+    +isActive(): bool
+    +{static} activeNear(lat: float, lng: float, radiusKm: float): Collection
+  }
+}
+
+' ===================== SERVICES =====================
+package "Services" {
+  class RoutingService {
+    -apiKey: string
+    -baseUrl: string
+    -timeoutSec: int
+    -cacheTtlMin: int
+    -dailyLimit: int
+    --
+    +buildRoute(points: array, mode: string): array
+    +getAlternatives(points: array, mode: string): array
+    +geocode(address: string): array
+    -makeCacheKey(points: array, mode: string): string
+    -sendRequest(endpoint: string, payload: array): array
+  }
+}
+
+' ===================== CONTROLLERS =====================
+package "Controllers" {
+  abstract class Controller {
+    #perPage: int
+    #viewPrefix: string
+    #middleware: array
+    #successMessage: string
+    #errorMessage: string
+    --
+    #authorize(ability: string, model: Model): void
+    #validate(request: Request, rules: array): array
+    #view(name: string, data: array): View
+    #redirectSuccess(route: string): RedirectResponse
+    #jsonError(message: string, code: int): JsonResponse
+  }
+
+  class PlaceController {
+    -searchLimit: int
+    -defaultRadiusKm: float
+    -placeRules: array
+    -allowedCategories: array
+    -cacheTtl: int
+    --
+    +index(request: Request): View
+    +search(request: Request): JsonResponse
+    +show(place: Place): View
+    +store(request: Request): RedirectResponse
+    +update(request: Request, place: Place): RedirectResponse
+    +destroy(place: Place): RedirectResponse
+  }
+
+  class RouteController {
+    -routingService: RoutingService
+    -maxWaypoints: int
+    -allowedModes: array
+    -routeRules: array
+    -defaultMode: string
+    --
+    +create(): View
+    +build(request: Request): JsonResponse
+    +show(route: Route): View
+    +addStop(request: Request, route: Route): JsonResponse
+    +startTrip(route: Route): RedirectResponse
+    +history(request: Request): View
+  }
+
+  class TrafficReportController {
+    -reportRules: array
+    -duplicateRadiusM: int
+    -duplicateWindowMin: int
+    -ttlHours: int
+    -allowedTypes: array
+    --
+    +index(request: Request): JsonResponse
+    +store(request: Request): RedirectResponse
+    +confirm(report: TrafficReport): JsonResponse
+    +approve(report: TrafficReport): RedirectResponse
+    +reject(report: TrafficReport): RedirectResponse
+  }
+}
+
+' ===================== ЗВ'ЯЗКИ =====================
+' Наслідування
+PlaceController --|> Controller
+RouteController --|> Controller
+TrafficReportController --|> Controller
+
+' Асоціація
+User "1" --> "0..*" Trip : здійснює
+User "1" --> "0..*" TrafficReport : створює
+Trip "0..*" --> "1" Route : за маршрутом
+FavoritePlace "0..*" --> "1" Place : посилається на
+Waypoint "0..*" --> "0..1" Place : може бути
+
+' Агрегація (частина може існувати без цілого)
+Category "0..1" o-- "0..*" Place : групує
+User "1" o-- "0..*" Route : будує
+
+' Композиція (частина не існує без цілого)
+Route "1" *-- "2..*" Waypoint : складається з
+User "1" *-- "0..*" FavoritePlace : зберігає
+
+' Залежність: контролери використовують моделі та сервіс
+PlaceController ..> Place : uses
+RouteController ..> Route : uses
+RouteController ..> RoutingService : uses
+TrafficReportController ..> TrafficReport : uses
+@enduml
