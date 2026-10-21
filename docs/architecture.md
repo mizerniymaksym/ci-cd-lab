@@ -157,3 +157,18 @@
 ![Діаграма варіантів використання](use-case-diagram.png)
 
 Вихідний код: [use-case-diagram.puml](use-case-diagram.puml)
+
+## 4. Діаграма класів
+
+![Діаграма класів](class-diagram.png)
+
+Вихідний код: [class-diagram.puml](class-diagram.puml)
+
+| Зв'язок                           | Тип                 | Реалізація в Laravel                       |
+| --------------------------------- | ------------------- | ------------------------------------------ |
+| User → Trip, User → TrafficReport | асоціація 1 : 0..\* | `hasMany` / `belongsTo`                    |
+| Category ◇— Place                 | агрегація           | `hasMany`, `nullOnDelete()` у міграції     |
+| User ◇— Route                     | агрегація           | `hasMany`, `nullOnDelete()` у міграції     |
+| Route ◆— Waypoint                 | композиція          | `hasMany`, `cascadeOnDelete()` у міграції  |
+| User ◆— FavoritePlace             | композиція          | `hasMany`, `cascadeOnDelete()` у міграції  |
+| \*Controller —▷ Controller        | наслідування        | `class PlaceController extends Controller` |
