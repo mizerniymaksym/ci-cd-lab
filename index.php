@@ -55,6 +55,8 @@ $evenWordsCount = countEvenLengthWords($navigationHint);
     <title>GPS Navigator - Lab 3</title>
 </head>
 <body>
+    <h2>Завдання 1. Робота з масивами</h2>
+    <p><a href="/app/Models/EntityArray.php">Відкрити сторінку з масивами (EntityArray.php)</a></p>
     <h2>Завдання 2. Розрахунок тривалості маршруту</h2>
     <p>
         Відстань: <?= $distanceKm ?> км,
