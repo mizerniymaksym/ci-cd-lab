@@ -1,0 +1,19 @@
+<?php
+
+declare(strict_types=1);
+
+function calculateDurationMin(float $distanceKm, float $averageSpeedKmh): int
+{
+    $hours = $distanceKm / $averageSpeedKmh;
+
+    return (int) round($hours * 60);
+}
+
+function applyDiscount(float $price, float $discount): float
+{
+    if ($discount < 0 || $discount > 100) {
+        throw new Exception('Неприпустиме значення знижки!');
+    }
+
+    return $price - ($price * ($discount / 100));
+}

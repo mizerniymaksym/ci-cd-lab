@@ -1,0 +1,20 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Models;
+
+abstract class AbstractEntity
+{
+    public function __construct(
+        protected int $id,
+        protected string $createdAt
+    ) {}
+
+    public function getId(): int
+    {
+        return $this->id;
+    }
+
+    abstract public function getDetails(): string;
+}
