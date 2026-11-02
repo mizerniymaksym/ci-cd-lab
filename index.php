@@ -2,99 +2,116 @@
 
 declare(strict_types=1);
 
-use Faker\Factory;
-
 require_once __DIR__.'/vendor/autoload.php';
-require_once __DIR__.'/app/Services/EntityService.php';
-require_once __DIR__.'/app/Services/DataProcessor.php';
 
-$distanceKm = 4.7;
-$averageSpeedKmh = 40.0;
-$durationMin = calculateDurationMin($distanceKm, $averageSpeedKmh);
+use App\Core\Database;
+use App\Core\EntityFactory;
+use App\Services\ConsoleLogger;
+use App\Services\EntityService;
+use App\Services\FileLogger;
+use App\Tasks\Book;
+use App\Tasks\Category;
+use App\Tasks\HeadOfDepartment;
+use App\Tasks\Student;
+use App\Tasks\Teacher;
+use App\Tasks\Triangle;
 
-$faker = Factory::create();
-
-$routeDistances = [];
-for ($i = 0; $i < 10; $i++) {
-    $routeDistances[] = $faker->randomFloat(1, 0.5, 50);
+if (PHP_SAPI !== 'cli') {
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<pre>';
 }
 
-$minDistanceKm = 10.0;
+function section(string $title): void
+{
+    echo PHP_EOL.'=== '.$title.' ==='.PHP_EOL;
+}
 
-$longRoutes = array_filter($routeDistances, function (float $distance) use ($minDistanceKm): bool {
-    return $distance > $minDistanceKm;
-});
+section('Singleton: Database');
+$db1 = Database::getInstance();
+$db2 = Database::getInstance();
+echo 'Той самий екземпляр: '.($db1 === $db2 ? 'так' : 'ні').PHP_EOL;
 
-$subscriptionPrice = 1000.0;
-$discount = 150.0;
-$discountMessages = [];
+section('Factory: створення сутностей');
+$route = EntityFactory::createEntity('route', [
+    'id' => 1,
+    'createdAt' => '2026-10-28 10:00:00',
+    'mode' => 'driving',
+    'distanceKm' => 4.7,
+    'durationMin' => 15,
+]);
+$place = EntityFactory::createEntity('place', [
+    'id' => 2,
+    'createdAt' => '2026-10-28 10:05:00',
+    'name' => 'Площа Ринок',
+    'latitude' => 49.8419,
+    'longitude' => 24.0315,
+]);
+echo $route->getDetails().PHP_EOL;
+echo $place->getDetails().PHP_EOL;
 
 try {
-    $finalPrice = applyDiscount($subscriptionPrice, $discount);
-    $discountMessages[] = "Ціна зі знижкою: {$finalPrice} грн";
-} catch (Exception $e) {
-    $discountMessages[] = 'Помилка: '.$e->getMessage();
-} finally {
-    $discountMessages[] = 'Завершення спроби розрахунку.';
+    EntityFactory::createEntity('car', []);
+} catch (InvalidArgumentException $e) {
+    echo 'Помилка фабрики: '.$e->getMessage().PHP_EOL;
 }
 
-$inputNumber = 1234076;
-$minDigit = findMinDigit($inputNumber);
+section('Trait: експорт Route у JSON');
+echo $route->exportToJson().PHP_EOL;
 
-$routeDescription = 'Маршрут від Львова до Києва проходить через Житомир';
-$searchCity = 'Житомир';
-$cityPosition = findSubstring($routeDescription, $searchCity);
+section('Dependency Injection: EntityService + ConsoleLogger');
+$service = new EntityService(new ConsoleLogger);
+$service->register($route);
+$service->register($place);
+$service->export($route);
 
-$navigationHint = 'Поверніть праворуч через двісті метрів';
-$evenWordsCount = countEvenLengthWords($navigationHint);
-?>
-<!DOCTYPE html>
-<html lang="uk">
-<head>
-    <meta charset="UTF-8">
-    <title>GPS Navigator - Lab 3</title>
-</head>
-<body>
-    <h2>Завдання 1. Робота з масивами</h2>
-    <p><a href="/app/Models/EntityArray.php">Відкрити сторінку з масивами (EntityArray.php)</a></p>
-    <h2>Завдання 2. Розрахунок тривалості маршруту</h2>
-    <p>
-        Відстань: <?= $distanceKm ?> км,
-        середня швидкість: <?= $averageSpeedKmh ?> км/год →
-        тривалість: <strong><?= $durationMin ?> хв</strong>
-    </p>
+section('Dependency Injection: EntityService + FileLogger');
+$fileService = new EntityService(new FileLogger);
+$fileService->register($place);
 
-    <h2>Завдання 3. Фільтрація маршрутів (Faker + closure)</h2>
-    <p>Згенеровані відстані маршрутів (км): <?= implode(', ', $routeDistances) ?></p>
-    <p>Поріг: більше ніж <?= $minDistanceKm ?> км</p>
-    <p>Довгі маршрути: <strong><?= implode(', ', $longRoutes) ?></strong></p>
+section('Варіант 4. Табл. 4.2 №3: Book та Category');
+$category = new Category(1, 'Програмування');
+$category->addBook(new Book(1, 'Clean Code', ['Robert C. Martin'], 2008));
+$category->addBook(new Book(2, 'Design Patterns', ['Erich Gamma', 'Richard Helm', 'Ralph Johnson', 'John Vlissides'], 1994));
+$category->addBook(new Book(3, 'Clean Architecture', ['Robert C. Martin'], 2017));
+echo "Категорія «{$category->getName()}», книг: ".count($category->getBooks()).PHP_EOL;
+echo 'Пошук «clean»:'.PHP_EOL;
+foreach ($category->searchBook('clean') as $book) {
+    echo '  '.$book->getInfo().PHP_EOL;
+}
+echo 'Видалення книги #2: '.($category->removeBook(2) ? 'успішно' : 'не знайдено').PHP_EOL;
+echo 'Видалення книги #99: '.($category->removeBook(99) ? 'успішно' : 'не знайдено').PHP_EOL;
+echo 'Книги після видалення:'.PHP_EOL;
+foreach ($category->getBooks() as $book) {
+    echo '  '.$book->getInfo().PHP_EOL;
+}
 
-    <h2>Завдання 4. Обробка винятків</h2>
-    <p>Ціна підписки: <?= $subscriptionPrice ?> грн, знижка: <?= $discount ?>%</p>
-    <ul>
-        <?php foreach ($discountMessages as $message) { ?>
-            <li><?= htmlspecialchars($message) ?></li>
-        <?php } ?>
-    </ul>
+section('Варіант 4. Табл. 4.3 №2: Персона -> Студент -> Викладач -> Завідувач кафедри');
+$people = [
+    new Student('Максим', 'Мізерний', 2005, 'КН-42'),
+    new Teacher('Олена', 'Коваль', 1985, 'КН-42', 'Веб-програмування'),
+    new HeadOfDepartment('Ігор', 'Петренко', 1970, 'КН-42', 'Бази даних', 'Комп\'ютерних наук'),
+];
+foreach ($people as $person) {
+    echo $person::class.': '.$person->getRoleDetails().PHP_EOL;
+}
 
-    <h2>Завдання 5. Алгоритмічні задачі (варіант 4)</h2>
+section('Варіант 4. Табл. 4.4 №2: Triangle (формула Герона)');
+$triangle = new Triangle(3, 4, 5);
+echo "Сторони: {$triangle->a}, {$triangle->b}, {$triangle->c}".PHP_EOL;
+echo 'Периметр: '.$triangle->getPerimeter().PHP_EOL;
+echo 'Площа: '.round($triangle->getArea(), 2).PHP_EOL;
 
-    <h3>3.2 №7. Мінімальна цифра числа</h3>
-    <p>Число: <?= $inputNumber ?> → мінімальна цифра: <strong><?= $minDigit ?></strong></p>
+try {
+    new Triangle(1, 2, 10);
+} catch (InvalidArgumentException $e) {
+    echo 'Помилка: '.$e->getMessage().PHP_EOL;
+}
 
-    <h3>3.3 №1. Пошук підрядка</h3>
-    <p>Рядок: «<?= htmlspecialchars($routeDescription) ?>»</p>
-    <p>Шуканий підрядок: «<?= htmlspecialchars($searchCity) ?>»</p>
-    <p>
-        <?php if ($cityPosition !== null) { ?>
-            Знайдено: <strong>«<?= htmlspecialchars($searchCity) ?>»</strong> на позиції <?= $cityPosition ?>
-        <?php } else { ?>
-            Підрядок не знайдено
-        <?php } ?>
-    </p>
-
-    <h3>3.4 №5. Слова з парною кількістю символів</h3>
-    <p>Рядок: «<?= htmlspecialchars($navigationHint) ?>»</p>
-    <p>Кількість слів з парною довжиною: <strong><?= $evenWordsCount ?></strong></p>
-</body>
-</html>
+try {
+    $triangle->a = 10;
+} catch (Error $e) {
+    echo 'Спроба змінити readonly-сторону: '.$e->getMessage().PHP_EOL;
+}
+if (PHP_SAPI !== 'cli') {
+    echo '</pre>';
+}

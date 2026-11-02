@@ -2,18 +2,29 @@
 
 declare(strict_types=1);
 
-function calculateDurationMin(float $distanceKm, float $averageSpeedKmh): int
-{
-    $hours = $distanceKm / $averageSpeedKmh;
+namespace App\Services;
 
-    return (int) round($hours * 60);
-}
+use App\Interfaces\ExportableInterface;
+use App\Interfaces\LoggerInterface;
+use App\Models\AbstractEntity;
 
-function applyDiscount(float $price, float $discount): float
+class EntityService
 {
-    if ($discount < 0 || $discount > 100) {
-        throw new Exception('Неприпустиме значення знижки!');
+    public function __construct(private LoggerInterface $logger) {}
+
+    public function register(AbstractEntity $entity): string
+    {
+        $details = $entity->getDetails();
+        $this->logger->log("Зареєстровано сутність #{$entity->getId()}: {$details}");
+
+        return $details;
     }
 
-    return $price - ($price * ($discount / 100));
+    public function export(ExportableInterface $entity): string
+    {
+        $json = $entity->exportToJson();
+        $this->logger->log('Сутність експортовано у JSON ('.strlen($json).' байт)');
+
+        return $json;
+    }
 }
